@@ -4,7 +4,6 @@ import { useState } from 'react';
 import Navbar from './Navbar';
 import Footer from './Footer';
 import ProfileSidebar from '../profile/ProfileSidebar';
-
 export default function Layout({ children }) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
@@ -24,13 +23,16 @@ export default function Layout({ children }) {
       {/* Profile Sidebar */}
       <ProfileSidebar isOpen={isProfileOpen} onClose={closeProfile} />
 
-      {/* Main Content */}
-      <main className="flex-1">
+      {/* Main Content — extra bottom padding on mobile for the fixed bottom nav */}
+      <main className="flex-1 pb-20 md:pb-0">
         {children}
       </main>
 
-      {/* Footer */}
-      <Footer />
+      {/* Footer — hidden on mobile (bottom nav serves that purpose) */}
+      <div className="hidden md:block">
+        <Footer />
+      </div>
+
     </div>
   );
 }
