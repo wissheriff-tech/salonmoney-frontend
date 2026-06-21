@@ -98,7 +98,7 @@ export default function DepositPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (sle < 1000) return toast.error('Minimum deposit is 1,000 NSL');
+    if (!sle || sle <= 0) return toast.error('Please enter the amount from your receipt');
     if (!senderNumber.trim()) return toast.error('Your phone number is required');
     if (!referenceId.trim()) return toast.error('Reference ID from your SMS is required');
     if (!screenshot) return toast.error('Receipt screenshot is required');
@@ -184,7 +184,7 @@ export default function DepositPage() {
               <div style={{ marginBottom: '1rem' }}>
                 <label style={S.label}>Amount Sent (NSL — from your receipt)</label>
                 <input
-                  type="number" min="1000" step="1" value={amountSLE}
+                  type="number" min="1" step="1" value={amountSLE}
                   onChange={e => setAmountSLE(e.target.value)}
                   placeholder="Enter exact NSL amount from receipt"
                   style={S.input} required
@@ -192,7 +192,7 @@ export default function DepositPage() {
               </div>
 
               {/* Fee preview */}
-              {sle >= 1000 && (
+              {sle > 0 && (
                 <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 10, padding: '0.875rem', marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.45)' }}>You sent</span>
@@ -293,16 +293,16 @@ export default function DepositPage() {
               <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: 10, padding: '0.75rem', marginBottom: '1.25rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
                 <AlertTriangle size={14} color="#f59e0b" style={{ flexShrink: 0, marginTop: 1 }} />
                 <p style={{ fontSize: '0.75rem', color: '#f59e0b' }}>
-                  Enter the exact NSL amount from your receipt. If the amount you enter does not match the receipt, your deposit will be delayed or rejected.
+                  Enter the exact amount from your receipt. Any amount is accepted — mismatches will delay or reject the deposit.
                 </p>
               </div>
 
               <button type="submit"
-                disabled={isLoading || isCompressing || isExtracting || sle < 1000 || !senderNumber.trim() || !referenceId.trim() || !screenshot}
+                disabled={isLoading || isCompressing || isExtracting || sle <= 0 || !senderNumber.trim() || !referenceId.trim() || !screenshot}
                 style={{
                   width: '100%', padding: '0.875rem', borderRadius: 12, fontWeight: 800, fontSize: '0.875rem', cursor: 'pointer',
                   background: accentBg, border: `1px solid ${accentBorder}`, color: accentColor,
-                  opacity: isLoading || isCompressing || isExtracting || sle < 1000 || !senderNumber.trim() || !referenceId.trim() || !screenshot ? 0.5 : 1,
+                  opacity: isLoading || isCompressing || isExtracting || sle <= 0 || !senderNumber.trim() || !referenceId.trim() || !screenshot ? 0.5 : 1,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem',
                 }}>
                 {isLoading ? 'Submitting…' : isExtracting ? 'Scanning receipt…' : `Submit ${isOrange ? 'Orange Money' : 'Africell'} Deposit`}

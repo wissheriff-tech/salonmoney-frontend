@@ -5,6 +5,11 @@ export async function extractReceiptData(file) {
   return parseReceiptText(text);
 }
 
+function cleanNum(str) {
+  // handles "50,000" "50 000" "50.000" → 50000
+  return parseInt(str.replace(/[,.\s]/g, ''), 10);
+}
+
 function parseReceiptText(raw) {
   const flat = raw.replace(/\r?\n/g, ' ').replace(/\s{2,}/g, ' ');
 
@@ -12,21 +17,26 @@ function parseReceiptText(raw) {
   let senderNumber = '';
   let referenceId = '';
 
-  // Amount — Le / SLE / NLE currency markers
+  // Amount — try labelled fields first, then currency-adjacent numbers
+  // Handles: "50,000" "50 000" "50.000" with optional Le/SLE/NLE/SLL prefix or suffix
+  const NUM = '([\\d][\\d,. ]{1,12})';
+  const CUR = '(?:le|sle|nle|sll|nsl)';
   const amountTries = [
-    flat.match(/(?:amount|amt|total|sent|paid|value|recharge)[:\s]+(?:le|sle|nle)?\s*([\d,]+)/i),
-    flat.match(/(?:le|sle|nle)\s*([\d,]+(?:\.\d{1,2})?)/i),
-    flat.match(/([\d,]{4,})\s*(?:le|sle|nle)/i),
+    flat.match(new RegExp(`(?:amount|amt|total|sent|paid|value|recharge|credit|debit)[:\\s]+(?:${CUR})?\\s*${NUM}`, 'i')),
+    flat.match(new RegExp(`${CUR}\\s*${NUM}`, 'i')),
+    flat.match(new RegExp(`${NUM}\\s*${CUR}`, 'i')),
+    // last resort: biggest standalone number on the receipt
+    flat.match(/\b(\d[\d,. ]{2,10}\d)\b/),
   ];
   for (const m of amountTries) {
     if (!m) continue;
-    const n = parseInt(m[1].replace(/,/g, ''), 10);
-    if (n >= 1000 && n <= 100_000_000) { amount = n.toString(); break; }
+    const n = cleanNum(m[1]);
+    if (n > 0 && n <= 500_000_000) { amount = n.toString(); break; }
   }
 
-  // Sierra Leone phone numbers: 9 digits starting 07X/03X, or with +232 prefix
+  // Sierra Leone phone — 076/077/078/079/030/031/032/033 (9 digits) or +232 prefix
   const phoneM = flat.match(
-    /(?:from|de|sender|mobile|phone|msisdn)?[:\s]?(\+?232[\s.\-]?[0-9]{2}[\s.\-]?[0-9]{3}[\s.\-]?[0-9]{4}|0[37][0-9][\s.\-]?[0-9]{3}[\s.\-]?[0-9]{4})/i
+    /(?:from|de|sender|mobile|phone|msisdn|numero)?[:\s]*(\+?232[\s.\-]?[0-9]{2}[\s.\-]?[0-9]{3}[\s.\-]?[0-9]{4}|\b0[37][0-9][\s.\-]?[0-9]{3}[\s.\-]?[0-9]{4}\b)/i
   );
   if (phoneM) {
     const digits = phoneM[1].replace(/[\s.\-]/g, '');
@@ -35,10 +45,10 @@ function parseReceiptText(raw) {
     else senderNumber = digits;
   }
 
-  // Reference ID — labelled field first, then bare code pattern
+  // Reference ID — prefer labelled field, fall back to bare alphanumeric code
   const refM = flat.match(
-    /(?:ref(?:erence)?(?:\s*(?:id|no|num(?:ber)?)?)?|transaction\s*(?:id|no|ref)|txn|receipt\s*(?:id|no)?)[:\s#]+([A-Z0-9]{6,20})/i
-  ) || flat.match(/\b([A-Z]{1,4}[0-9]{8,14}[A-Z0-9]{0,4})\b/);
+    /(?:ref(?:erence)?(?:\s*(?:id|no|num(?:ber)?)?)?|transaction\s*(?:id|no|ref)|txn\s*(?:id)?|receipt\s*(?:no|id)?|id\s*no)[:\s#]+([A-Z0-9]{5,25})/i
+  ) || flat.match(/\b([A-Z]{1,4}[0-9]{6,16}[A-Z0-9]{0,6})\b/);
   if (refM) referenceId = refM[1].toUpperCase();
 
   return { amount, senderNumber, referenceId };
