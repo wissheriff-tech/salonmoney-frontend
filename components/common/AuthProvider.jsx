@@ -1,21 +1,34 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
 import api from '@/utils/api';
+import { API_ROUTES, PUBLIC_APP_PATHS } from '@/utils/navigation';
+import { applyStoredTheme } from '@/utils/theme';
 
 export default function AuthProvider({ children }) {
-  const { setUser, logout } = useAuthStore();
+  const pathname = usePathname();
+  const setUser = useAuthStore(state => state.setUser);
   const [connecting, setConnecting] = useState(false);
+
+  useEffect(() => {
+    const syncTheme = () => applyStoredTheme();
+    syncTheme();
+
+    window.addEventListener('storage', syncTheme);
+    return () => window.removeEventListener('storage', syncTheme);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     let retries = 0;
     const MAX_RETRIES = 5;
+    const isPublicPath = PUBLIC_APP_PATHS.includes(pathname);
 
-    async function checkAuth() {
+    async function checkAuth({ retryOnNetwork = true } = {}) {
       try {
-        const { data } = await api.get('/user/dashboard');
+        const { data } = await api.get(API_ROUTES.user.dashboard, { timeout: 8000 });
         if (!cancelled) {
           if (data.user) setUser(data.user);
           useAuthStore.setState({ isInitializing: false });
@@ -32,12 +45,12 @@ export default function AuthProvider({ children }) {
           return;
         }
 
-        // Network error / cold start — retry with backoff
-        if (retries < MAX_RETRIES) {
+        // Network error / cold start — retry with backoff on protected app pages.
+        if (retryOnNetwork && retries < MAX_RETRIES) {
           retries++;
           setConnecting(true);
           const delay = Math.min(2000 * retries, 10000); // 2s, 4s, 6s, 8s, 10s
-          setTimeout(checkAuth, delay);
+          setTimeout(() => checkAuth({ retryOnNetwork }), delay);
         } else {
           // Give up — let user proceed as unauthenticated
           useAuthStore.setState({ isInitializing: false });
@@ -46,17 +59,27 @@ export default function AuthProvider({ children }) {
       }
     }
 
-    checkAuth();
+    let publicAuthTimer = null;
+
+    if (isPublicPath) {
+      useAuthStore.setState({ isInitializing: false });
+      const scheduleIdleCheck = window.requestIdleCallback || ((callback) => setTimeout(callback, 1200));
+      publicAuthTimer = scheduleIdleCheck(() => checkAuth({ retryOnNetwork: false }));
+    } else {
+      checkAuth();
+    }
 
     // Keep backend warm — ping every 3 min to prevent cold starts
-    const ping = () => api.get('/health').catch(() => {});
+    const ping = () => api.get(API_ROUTES.health).catch(() => {});
     const interval = setInterval(ping, 3 * 60 * 1000);
 
     return () => {
       cancelled = true;
+      if (publicAuthTimer && window.cancelIdleCallback) window.cancelIdleCallback(publicAuthTimer);
+      if (publicAuthTimer && !window.cancelIdleCallback) clearTimeout(publicAuthTimer);
       clearInterval(interval);
     };
-  }, []);
+  }, [pathname, setUser]);
 
   return (
     <>

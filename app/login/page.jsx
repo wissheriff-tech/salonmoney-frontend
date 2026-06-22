@@ -6,6 +6,8 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { Eye, EyeOff, User, Lock, Wallet } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
+import { resolvePostLoginRedirect } from '@/utils/navigation';
+import { reloadIfPwaUpdateIsReady } from '@/utils/pwaUpdate';
 
 function Field({ label, children, action }) {
   return (
@@ -60,25 +62,47 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [showPass, setShowPass]     = useState(false);
   const [isLoading, setIsLoading]   = useState(false);
+  const [updateProgress, setUpdateProgress] = useState(null);
+  const [updateStage, setUpdateStage] = useState('Checking for the latest version');
   const { login } = useAuthStore();
   const router = useRouter();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    let reloadingForUpdate = false;
     try {
+      reloadingForUpdate = await reloadIfPwaUpdateIsReady({
+        onProgress: ({ progress, stage }) => {
+          setUpdateProgress(progress);
+          setUpdateStage(stage || 'Checking for the latest version');
+        },
+      });
+      if (reloadingForUpdate) return;
+      setUpdateProgress(null);
+
       const data = await login(identifier.trim(), password, rememberMe);
       if (data.requiresTwoFactor) {
+        try {
+          if (rememberMe) {
+            window.sessionStorage.setItem('pendingLoginRememberMe', '1');
+          } else {
+            window.sessionStorage.removeItem('pendingLoginRememberMe');
+          }
+        } catch {}
         toast.success(data.message);
         router.push(`/verify-2fa?userId=${data.userId}`);
         return;
       }
+      try {
+        window.sessionStorage.removeItem('pendingLoginRememberMe');
+      } catch {}
       toast.success('Welcome back!');
-      router.push(data.redirectTo || '/dashboard');
+      router.push(resolvePostLoginRedirect(data));
     } catch (error) {
       toast.error(error.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
-      setIsLoading(false);
+      if (!reloadingForUpdate) setIsLoading(false);
     }
   };
 
@@ -92,8 +116,26 @@ export default function Login() {
       justifyContent: 'center',
       padding: '1.5rem 1rem 3rem',
       position: 'relative',
-      overflow: 'hidden',
+      overflowX: 'hidden',
+      overflowY: 'auto',
     }}>
+      {updateProgress !== null && (
+        <div className="pwa-update-shell" role="status" aria-live="assertive">
+          <div className="pwa-update-card">
+            <p className="pwa-install-title">Updating SalonMoney</p>
+            <p className="pwa-install-copy">{updateStage}. {updateProgress}%</p>
+            <div
+              className="pwa-update-progress"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={updateProgress}
+            >
+              <div style={{ width: `${updateProgress}%` }} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Aurora orbs */}
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>

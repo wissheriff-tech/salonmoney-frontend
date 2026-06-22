@@ -27,7 +27,7 @@ const SOCIALS = [
 
 const CONTACT_ITEMS = [
   { Icon: Mail,   color: '#a78bfa', title: 'Email Us',  info: 'support@salonmoney.com', href: 'mailto:support@salonmoney.com', sub: null },
-  { Icon: Phone,  color: '#60a5fa', title: 'Call Us',   info: '+232 (0) 123 456 789',  href: 'tel:+2320123456789',          sub: 'Available 24/7' },
+  { Icon: Phone,  color: '#60a5fa', title: 'Call Us',   info: '+232 (0) 34115306',  href: 'tel:+23234115306',          sub: 'Available 24/7' },
   { Icon: MapPin, color: '#10b981', title: 'Visit Us',  info: 'Freetown, Sierra Leone', href: null,                          sub: null },
 ];
 
@@ -62,7 +62,7 @@ export default function ContactUs() {
         {/* Header */}
         <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
           <h1 style={{ fontSize: '2.25rem', fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', marginBottom: '0.5rem' }}>Contact Us</h1>
-          <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.45)' }}>Get in touch — we're here to help 24/7</p>
+          <p style={{ fontSize: '0.9rem', color: 'rgba(255,255,255,0.45)' }}>Get in touch — we&apos;re here to help 24/7</p>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>

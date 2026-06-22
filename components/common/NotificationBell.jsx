@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell, X, CheckCheck, Trash2 } from 'lucide-react';
 import api from '@/utils/api';
+import { API_ROUTES } from '@/utils/navigation';
 
 const TYPE_META = {
   transaction_approved: { emoji: '✅', bg: 'bg-green-100'  },
@@ -15,8 +16,19 @@ const TYPE_META = {
   referral_bonus:       { emoji: '🎁', bg: 'bg-purple-100' },
   account_approved:     { emoji: '🎉', bg: 'bg-green-100'  },
   account_suspended:    { emoji: '🚫', bg: 'bg-red-100'    },
+  account_updated:      { emoji: '👤', bg: 'bg-blue-100'   },
+  balance_adjusted:     { emoji: '💳', bg: 'bg-green-100'  },
+  phone_changed:        { emoji: '📱', bg: 'bg-blue-100'   },
+  password_changed:     { emoji: '🔐', bg: 'bg-red-100'    },
+  password_reset:       { emoji: '🔑', bg: 'bg-red-100'    },
   kyc_verified:         { emoji: '🛡️', bg: 'bg-teal-100'   },
   kyc_rejected:         { emoji: '❌', bg: 'bg-red-100'    },
+  withdrawal_approved:  { emoji: '✅', bg: 'bg-green-100'  },
+  withdrawal_rejected:  { emoji: '❌', bg: 'bg-red-100'    },
+  recharge_approved:    { emoji: '✅', bg: 'bg-green-100'  },
+  recharge_rejected:    { emoji: '❌', bg: 'bg-red-100'    },
+  vip_upgrade:          { emoji: '⭐', bg: 'bg-yellow-100' },
+  system_announcement:  { emoji: '📢', bg: 'bg-blue-100'   },
   security_alert:       { emoji: '🔒', bg: 'bg-red-100'    },
   admin_message:        { emoji: '📢', bg: 'bg-blue-100'   },
   system:               { emoji: '⚙️', bg: 'bg-gray-100'   },
@@ -49,7 +61,7 @@ export default function NotificationBell() {
 
   const fetchCount = useCallback(async () => {
     try {
-      const { data } = await api.get('/notifications/unread-count');
+      const { data } = await api.get(API_ROUTES.notifications.unreadCount);
       setUnread(data.unread_count || 0);
     } catch {}
   }, []);
@@ -57,9 +69,9 @@ export default function NotificationBell() {
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await api.get('/notifications?limit=30');
+      const { data } = await api.get(API_ROUTES.notifications.list, { params: { limit: 30 } });
       setNotifications(data.notifications || []);
-      setUnread(data.unread_count ?? 0);
+      if (typeof data.unread_count === 'number') setUnread(data.unread_count);
     } catch {}
     finally { setLoading(false); }
   }, []);
@@ -87,7 +99,7 @@ export default function NotificationBell() {
 
   const markRead = async (id) => {
     try {
-      await api.patch(`/notifications/${id}/read`);
+      await api.patch(API_ROUTES.notifications.read(id));
       setNotifications(ns => ns.map(n => n.id === id ? { ...n, read: true } : n));
       setUnread(u => Math.max(0, u - 1));
     } catch {}
@@ -95,7 +107,7 @@ export default function NotificationBell() {
 
   const markAllRead = async () => {
     try {
-      await api.patch('/notifications/mark-all-read');
+      await api.patch(API_ROUTES.notifications.markAllRead);
       setNotifications(ns => ns.map(n => ({ ...n, read: true })));
       setUnread(0);
     } catch {}
@@ -104,7 +116,7 @@ export default function NotificationBell() {
   const deleteOne = async (e, id) => {
     e.stopPropagation();
     try {
-      await api.delete(`/notifications/${id}`);
+      await api.delete(API_ROUTES.notifications.item(id));
       setNotifications(ns => ns.filter(n => n.id !== id));
       const was = notifications.find(n => n.id === id);
       if (was && !was.read) setUnread(u => Math.max(0, u - 1));
@@ -113,7 +125,7 @@ export default function NotificationBell() {
 
   const clearRead = async () => {
     try {
-      await api.delete('/notifications/clear-read');
+      await api.delete(API_ROUTES.notifications.clearRead);
       setNotifications(ns => ns.filter(n => !n.read));
     } catch {}
   };

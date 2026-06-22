@@ -36,7 +36,11 @@ export default function ResetPassword() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (password !== confirmPassword) { toast.error('Passwords do not match'); return; }
-    if (password.length < 6) { toast.error('Password must be at least 6 characters'); return; }
+    if (password.length < 8) { toast.error('Password must be at least 8 characters'); return; }
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/.test(password)) {
+      toast.error('Password must contain uppercase, lowercase, number, and special character');
+      return;
+    }
     setIsLoading(true);
     try {
       const { data } = await api.post(`/auth/reset-password/${token}`, { password });

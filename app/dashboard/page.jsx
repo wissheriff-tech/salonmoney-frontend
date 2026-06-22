@@ -7,10 +7,11 @@ import toast from 'react-hot-toast';
 import {
   Wallet, DollarSign, TrendingUp, Users, ArrowDownCircle,
   ArrowUpCircle, ShoppingBag, Copy, Check, Sun, Moon,
-  CloudSun, ChevronRight,
+  CloudSun, ChevronRight, ChevronLeft,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import api from '@/utils/api';
+import { API_ROUTES, APP_ROUTES } from '@/utils/navigation';
 import Layout from '@/components/common/Layout';
 
 // ─── tiny helpers ─────────────────────────────────────────────────────────────
@@ -18,6 +19,12 @@ import Layout from '@/components/common/Layout';
 function fmt(n, decimals = 2) {
   if (n == null) return '0.00';
   return parseFloat(n).toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+function activityAmountLabel(item) {
+  if (item?.amount_display) return item.amount_display;
+  const amount = parseFloat(item?.amount_nsl || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+  return `${amount} ${item?.currency_code || 'NSL'}`;
 }
 
 function useGreeting() {
@@ -162,8 +169,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (isInitializing) return;
-    if (!user) { router.push('/login'); return; }
-    api.get('/user/dashboard')
+    if (!user) { router.push(APP_ROUTES.login); return; }
+    api.get(API_ROUTES.user.dashboard)
       .then(({ data }) => {
         setDashboard(data);
         if (data.user) setUser({ ...user, ...data.user });
@@ -346,6 +353,8 @@ export default function Dashboard() {
             <QuickAction href="/transactions" Icon={TrendingUp}      label="Transactions"   desc="View your full history"          color="#f472b6" />
           </div>
 
+          <TestimonialCountryList />
+
           {/* ── Referral code ────────────────────────────────────────────── */}
           {dashboard?.user?.referral_code && (
             <ReferralBar code={dashboard.user.referral_code} />
@@ -357,42 +366,314 @@ export default function Dashboard() {
       <TestimonialFeed />
       <style>{`
         @keyframes spin{to{transform:rotate(360deg)}}
-        @keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes fadeOut{from{opacity:1}to{opacity:0}}
+        @keyframes testimonialDrop{from{opacity:0;transform:translate(-50%,-18px)}to{opacity:1;transform:translate(-50%,0)}}
+        @keyframes testimonialFade{from{opacity:1;transform:translate(-50%,0)}to{opacity:0;transform:translate(-50%,-12px)}}
       `}</style>
     </Layout>
   );
 }
 
+function TestimonialCountryList() {
+  const [countries, setCountries] = useState([]);
+  const [selectedCountry, setSelectedCountry] = useState('Sierra Leone');
+  const [page, setPage] = useState(1);
+  const [items, setItems] = useState([]);
+  const [pagination, setPagination] = useState({ page: 1, total_pages: 1, total: 0 });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    setLoading(true);
+    api.get(API_ROUTES.testimonials.public, { params: { country: selectedCountry, page, limit: 5 } })
+      .then(({ data }) => {
+        if (!mounted) return;
+        const nextCountries = Array.isArray(data.countries) ? data.countries : [];
+        setCountries(nextCountries);
+        setItems(Array.isArray(data.testimonials) ? data.testimonials : []);
+        setPagination(data.pagination || { page: 1, total_pages: 1, total: 0 });
+        if (!nextCountries.some(country => country.country === selectedCountry) && nextCountries[0]) {
+          setSelectedCountry(nextCountries[0].country);
+        }
+      })
+      .catch(() => {
+        if (mounted) setItems([]);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => { mounted = false; };
+  }, [selectedCountry, page]);
+
+  const selectedMeta = countries.find(country => country.country === selectedCountry);
+  const canPrevious = page > 1;
+  const canNext = page < (pagination.total_pages || 1);
+
+  return (
+    <section style={{
+      background: 'rgba(255,255,255,0.07)',
+      border: '1px solid rgba(255,255,255,0.12)',
+      borderRadius: 16,
+      padding: '1rem',
+      backdropFilter: 'blur(12px)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.9rem', flexWrap: 'wrap' }}>
+        <div>
+          <p style={{ fontSize: '0.75rem', fontWeight: 800, color: '#fff', marginBottom: '0.15rem' }}>Country activity</p>
+          <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.45)' }}>Showing five records per page.</p>
+        </div>
+        <select
+          value={selectedCountry}
+          onChange={(event) => { setSelectedCountry(event.target.value); setPage(1); }}
+          style={{
+            minWidth: 180,
+            background: 'rgba(10,8,28,0.9)',
+            border: '1px solid rgba(255,255,255,0.18)',
+            borderRadius: 10,
+            color: '#fff',
+            padding: '0.55rem 0.7rem',
+            fontSize: '0.78rem',
+            fontWeight: 700,
+            outline: 'none',
+          }}
+        >
+          {countries.map(country => (
+            <option key={country.country} value={country.country}>
+              {country.flag} {country.country}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.8rem', color: 'rgba(255,255,255,0.68)', fontSize: '0.78rem' }}>
+        <span style={{ fontSize: '1rem' }}>{selectedMeta?.flag || ''}</span>
+        <span>{selectedCountry}</span>
+        <span style={{ color: 'rgba(255,255,255,0.35)' }}>•</span>
+        <span>{selectedMeta?.currency_code || 'NSL'}</span>
+      </div>
+
+      <div style={{ display: 'grid', gap: '0.55rem' }}>
+        {loading ? (
+          <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.78rem', padding: '1rem 0' }}>Loading country activity...</div>
+        ) : items.length ? items.map(item => {
+          const typeColor = item.type === 'withdrawal' ? '#10b981' : item.type === 'deposit' ? '#60a5fa' : '#f59e0b';
+          const typeLabel = item.type === 'withdrawal' ? 'Withdrawal' : item.type === 'deposit' ? 'Deposit' : 'Earning';
+          return (
+            <div key={item.id} style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr auto',
+              gap: '0.5rem',
+              alignItems: 'center',
+              padding: '0.65rem 0.75rem',
+              borderRadius: 12,
+              background: 'rgba(255,255,255,0.055)',
+              border: '1px solid rgba(255,255,255,0.08)',
+            }}>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ color: '#fff', fontSize: '0.82rem', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.flag} {item.name}</p>
+                <p style={{ color: 'rgba(255,255,255,0.38)', fontSize: '0.68rem', fontFamily: 'monospace', marginTop: '0.1rem' }}>{item.phone}</p>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ color: typeColor, fontSize: '0.7rem', fontWeight: 800 }}>{typeLabel}</p>
+                <p style={{ color: '#fff', fontSize: '0.78rem', fontWeight: 800 }}>{activityAmountLabel(item)}</p>
+              </div>
+            </div>
+          );
+        }) : (
+          <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.78rem', padding: '1rem 0' }}>No records for this country.</div>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginTop: '0.9rem' }}>
+        <button
+          type="button"
+          disabled={!canPrevious}
+          onClick={() => setPage(value => Math.max(1, value - 1))}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.25rem',
+            padding: '0.45rem 0.65rem',
+            borderRadius: 9,
+            border: '1px solid rgba(255,255,255,0.12)',
+            background: canPrevious ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.035)',
+            color: canPrevious ? '#fff' : 'rgba(255,255,255,0.25)',
+            fontSize: '0.75rem',
+            fontWeight: 800,
+            cursor: canPrevious ? 'pointer' : 'not-allowed',
+          }}
+        >
+          <ChevronLeft size={14} /> Five before
+        </button>
+        <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.72rem', fontWeight: 700 }}>
+          {pagination.page || page} / {pagination.total_pages || 1}
+        </span>
+        <button
+          type="button"
+          disabled={!canNext}
+          onClick={() => setPage(value => value + 1)}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.25rem',
+            padding: '0.45rem 0.65rem',
+            borderRadius: 9,
+            border: '1px solid rgba(255,255,255,0.12)',
+            background: canNext ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.035)',
+            color: canNext ? '#fff' : 'rgba(255,255,255,0.25)',
+            fontSize: '0.75rem',
+            fontWeight: 800,
+            cursor: canNext ? 'pointer' : 'not-allowed',
+          }}
+        >
+          Next five <ChevronRight size={14} />
+        </button>
+      </div>
+    </section>
+  );
+}
+
+const TESTIMONIAL_VISIBLE_MS = 3000;
+const TESTIMONIAL_HOLD_RELEASE_MS = 450;
+const TESTIMONIAL_RANDOM_DELAYS_MS = [
+  60_000,
+  5 * 60_000,
+  10 * 60_000,
+  15 * 60_000,
+  20 * 60_000,
+  30 * 60_000,
+  40 * 60_000,
+  60 * 60_000,
+];
+
+const nextTestimonialDelay = () => TESTIMONIAL_RANDOM_DELAYS_MS[
+  Math.floor(Math.random() * TESTIMONIAL_RANDOM_DELAYS_MS.length)
+];
+
 function TestimonialFeed() {
   const [items, setItems] = useState([]);
   const [current, setCurrent] = useState(null);
   const [visible, setVisible] = useState(false);
+  const [drag, setDrag] = useState({ active: false, startX: 0, startY: 0, x: 0, y: 0 });
+  const dragRef = useRef(drag);
   const indexRef = useRef(0);
+  const hideTimerRef = useRef(null);
+  const nextTimerRef = useRef(null);
+  const holdRef = useRef(false);
+
+  function clearTestimonialTimers() {
+    clearTimeout(hideTimerRef.current);
+    clearTimeout(nextTimerRef.current);
+  }
+
+  function scheduleNextTestimonial(delay = nextTestimonialDelay()) {
+    clearTimeout(nextTimerRef.current);
+    nextTimerRef.current = setTimeout(showNextTestimonial, delay);
+  }
+
+  function hideAndScheduleNext() {
+    if (holdRef.current) return;
+    setVisible(false);
+    scheduleNextTestimonial();
+  }
+
+  function showNextTestimonial() {
+    if (!items.length) return;
+    clearTestimonialTimers();
+    const item = items[indexRef.current % items.length];
+    indexRef.current += 1;
+    setCurrent(item);
+    setVisible(true);
+    hideTimerRef.current = setTimeout(hideAndScheduleNext, TESTIMONIAL_VISIBLE_MS);
+  }
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL}/testimonials`)
-      .then(r => r.json())
-      .then(d => { if (Array.isArray(d.testimonials) && d.testimonials.length) setItems(d.testimonials); })
+    api.get(API_ROUTES.testimonials.public, { params: { country: 'all', page: 1, limit: 30 } })
+      .then(({ data: d }) => {
+        if (Array.isArray(d.testimonials) && d.testimonials.length) {
+          setItems([...d.testimonials].sort(() => Math.random() - 0.5));
+        }
+      })
       .catch(() => {});
   }, []);
 
   useEffect(() => {
     if (!items.length) return;
-    let hideTimer, nextTimer;
-    const show = () => {
-      const item = items[indexRef.current % items.length];
-      indexRef.current += 1;
-      setCurrent(item);
-      setVisible(true);
-      clearTimeout(hideTimer);
-      hideTimer = setTimeout(() => setVisible(false), 4500);
-      clearTimeout(nextTimer);
-      nextTimer = setTimeout(show, 8000 + Math.random() * 7000);
-    };
-    const start = setTimeout(show, 2000 + Math.random() * 3000);
-    return () => { clearTimeout(start); clearTimeout(hideTimer); clearTimeout(nextTimer); };
+    scheduleNextTestimonial(60_000);
+    return clearTestimonialTimers;
   }, [items]);
+
+  const dismissCurrent = () => {
+    setVisible(false);
+    clearTestimonialTimers();
+    scheduleNextTestimonial();
+    const reset = { active: false, startX: 0, startY: 0, x: 0, y: 0 };
+    dragRef.current = reset;
+    setDrag(reset);
+  };
+  const holdCurrent = () => {
+    holdRef.current = true;
+    clearTimeout(hideTimerRef.current);
+  };
+  const releaseCurrent = () => {
+    holdRef.current = false;
+    clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(hideAndScheduleNext, TESTIMONIAL_HOLD_RELEASE_MS);
+  };
+  const startDrag = (event) => {
+    holdCurrent();
+    const next = { active: true, startX: event.clientX, startY: event.clientY, x: 0, y: 0 };
+    dragRef.current = next;
+    setDrag(next);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+  const moveDrag = (event) => {
+    if (!dragRef.current.active) return;
+    const next = {
+      ...dragRef.current,
+      x: event.clientX - dragRef.current.startX,
+      y: event.clientY - dragRef.current.startY,
+    };
+    dragRef.current = next;
+    setDrag(next);
+  };
+  const endDrag = () => {
+    const currentDrag = dragRef.current;
+    if (Math.abs(currentDrag.x) > 70 || currentDrag.y < -45) {
+      dismissCurrent();
+      return;
+    }
+    const reset = { active: false, startX: 0, startY: 0, x: 0, y: 0 };
+    dragRef.current = reset;
+    setDrag(reset);
+    releaseCurrent();
+  };
+
+  useEffect(() => {
+    if (!drag.active) return undefined;
+
+    const handleMouseMove = (event) => moveDrag(event);
+    const handleMouseUp = () => endDrag();
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [drag.active]);
+
+  const startTouchDrag = (event) => {
+    const touch = event.touches?.[0];
+    if (!touch) return;
+    startDrag({ clientX: touch.clientX, clientY: touch.clientY, currentTarget: event.currentTarget, pointerId: undefined });
+  };
+
+  const moveTouchDrag = (event) => {
+    const touch = event.touches?.[0];
+    if (!touch) return;
+    moveDrag({ clientX: touch.clientX, clientY: touch.clientY });
+  };
 
   if (!current) return null;
 
@@ -401,10 +682,15 @@ function TestimonialFeed() {
 
   return (
     <div style={{
-      position: 'fixed', bottom: '1.5rem', left: '1rem', zIndex: 9999,
-      maxWidth: 300, pointerEvents: 'none',
-      animation: visible ? 'slideUp 0.4s ease forwards' : 'fadeOut 0.5s ease forwards',
-    }}>
+      position: 'fixed',
+      top: 'calc(env(safe-area-inset-top, 0px) + 1rem)',
+      left: '50%',
+      zIndex: 9999,
+      width: 'min(92vw, 340px)',
+      pointerEvents: 'auto',
+      animation: visible ? 'testimonialDrop 0.35s ease forwards' : 'testimonialFade 0.35s ease forwards',
+    }}
+    >
       <div style={{
         background: 'linear-gradient(135deg, rgba(30,20,60,0.95) 0%, rgba(20,15,50,0.98) 100%)',
         border: '1px solid rgba(167,139,250,0.3)',
@@ -414,7 +700,24 @@ function TestimonialFeed() {
         backdropFilter: 'blur(20px)',
         boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
         display: 'flex', flexDirection: 'column', gap: '0.2rem',
-      }}>
+        touchAction: 'pan-y',
+        cursor: drag.active ? 'grabbing' : 'grab',
+        transform: `translate(${drag.x}px, ${drag.y}px)`,
+        opacity: Math.max(0.3, 1 - Math.min(Math.abs(drag.x) / 180, 0.7)),
+        transition: drag.active ? 'none' : 'transform 0.18s ease, opacity 0.18s ease',
+      }}
+        data-swipeable-testimonial
+        onMouseEnter={holdCurrent}
+        onMouseLeave={() => { if (!dragRef.current.active) releaseCurrent(); }}
+        onPointerDown={startDrag}
+        onPointerMove={moveDrag}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        onMouseDown={startDrag}
+        onTouchStart={startTouchDrag}
+        onTouchMove={moveTouchDrag}
+        onTouchEnd={endDrag}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span style={{ fontSize: '1.1rem' }}>{current.flag}</span>
           <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#e2e8f0' }}>{current.name}</span>
@@ -422,7 +725,7 @@ function TestimonialFeed() {
         </div>
         <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.6)' }}>
           <span style={{ color: typeColor, fontWeight: 600 }}>{typeLabel}</span>
-          {' '}<span style={{ color: '#fff', fontWeight: 700 }}>{parseFloat(current.amount_nsl).toLocaleString()} NSL</span>
+          {' '}<span style={{ color: '#fff', fontWeight: 700 }}>{activityAmountLabel(current)}</span>
         </div>
         <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace' }}>{current.phone}</div>
       </div>

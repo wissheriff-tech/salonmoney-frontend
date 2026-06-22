@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
 import Layout from '@/components/common/Layout';
-import { Save, User, Mail, Camera, Upload, ArrowLeft } from 'lucide-react';
+import { Save, User, Mail, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '@/utils/api';
 
@@ -15,46 +15,13 @@ const labelStyle = { display: 'block', fontSize: '0.75rem', color: 'rgba(255,255
 export default function SettingsPage() {
   const { user, setUser } = useAuthStore();
   const router = useRouter();
-  const fileInputRef = useRef(null);
   const [isLoading, setIsLoading]       = useState(false);
-  const [uploading, setUploading]       = useState(false);
-  const [profilePhoto, setProfilePhoto] = useState(null);
-  const [photoPreview, setPhotoPreview] = useState(null);
   const [form, setForm] = useState({ username: '', email: '' });
 
   useEffect(() => {
     if (!user) { router.push('/login'); return; }
     setForm({ username: user.username || '', email: user.email || '' });
-    if (user.profile_photo) {
-      setPhotoPreview(`${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api').replace('/api', '')}${user.profile_photo}`);
-    }
   }, [user, router]);
-
-  const handlePhotoChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-    if (!validTypes.includes(file.type)) return toast.error('Use JPG, PNG, GIF or WebP');
-    if (file.size > 5 * 1024 * 1024) return toast.error('Image must be under 5 MB');
-    setProfilePhoto(file);
-    const reader = new FileReader();
-    reader.onloadend = () => setPhotoPreview(reader.result);
-    reader.readAsDataURL(file);
-  };
-
-  const handlePhotoUpload = async () => {
-    if (!profilePhoto) return toast.error('Select a photo first');
-    setUploading(true);
-    const fd = new FormData();
-    fd.append('profile_photo', profilePhoto);
-    try {
-      const { data } = await api.post('/user/upload-profile-photo', fd);
-      setUser({ ...user, profile_photo: data.profile_photo });
-      toast.success('Photo updated!');
-      setProfilePhoto(null);
-    } catch (err) { toast.error(err.response?.data?.message || 'Upload failed');
-    } finally { setUploading(false); }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -67,9 +34,11 @@ export default function SettingsPage() {
     } finally { setIsLoading(false); }
   };
 
+  const initial = (form.username || user?.username || user?.phone || 'U').charAt(0).toUpperCase();
+
   return (
     <Layout>
-      <div style={{ minHeight: '100vh', background: BG, padding: '2rem 1rem 3rem', position: 'relative' }}>
+      <div className="account-readable-surface" style={{ minHeight: '100vh', background: BG, padding: '2rem 1rem 3rem', position: 'relative' }}>
         <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
           <div style={{ position: 'absolute', width: 400, height: 400, borderRadius: '50%', background: 'oklch(0.62 0.19 295 / .09)', filter: 'blur(100px)', top: -100, right: -80 }} />
           <div style={{ position: 'absolute', width: 350, height: 350, borderRadius: '50%', background: 'oklch(0.55 0.18 240 / .07)', filter: 'blur(90px)', bottom: -80, left: -60 }} />
@@ -83,38 +52,16 @@ export default function SettingsPage() {
           <h1 style={{ fontSize: '1.75rem', fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', marginBottom: '0.25rem' }}>Account Settings</h1>
           <p style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.4)', marginBottom: '1.75rem' }}>Update your profile information</p>
 
-          {/* Photo section */}
+          {/* Avatar section */}
           <div style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: '1.5rem', marginBottom: '1rem' }}>
-            <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '1rem' }}>Profile Photo</p>
+            <p style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '1rem' }}>Profile Avatar</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
-              <div style={{ position: 'relative', flexShrink: 0 }}>
-                <div style={{ width: 72, height: 72, borderRadius: '50%', border: '2px solid rgba(167,139,250,0.4)', overflow: 'hidden', background: 'rgba(167,139,250,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {photoPreview ? (
-                    <img src={photoPreview} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#a78bfa' }}>{(user?.username || 'U').charAt(0).toUpperCase()}</span>
-                  )}
-                </div>
-                <button type="button" onClick={() => fileInputRef.current?.click()} style={{ position: 'absolute', bottom: 0, right: 0, width: 24, height: 24, borderRadius: '50%', background: 'rgba(167,139,250,0.8)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 0 }}>
-                  <Camera size={12} color="#fff" />
-                </button>
+              <div style={{ width: 72, height: 72, borderRadius: '50%', border: '2px solid rgba(167,139,250,0.4)', background: 'rgba(167,139,250,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <span style={{ fontSize: '1.5rem', fontWeight: 900, color: '#a78bfa' }}>{initial}</span>
               </div>
-
               <div>
-                <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoChange} style={{ display: 'none' }} />
-                <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.5)', marginBottom: '0.25rem' }}>JPG, PNG, GIF or WebP · max 5 MB</p>
-                {profilePhoto ? (
-                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                    <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)', padding: '0.3rem 0.6rem', background: 'rgba(255,255,255,0.06)', borderRadius: 8, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{profilePhoto.name}</p>
-                    <button type="button" onClick={handlePhotoUpload} disabled={uploading} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.75rem', borderRadius: 8, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: '#10b981', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' }}>
-                      <Upload size={11} /> {uploading ? 'Uploading…' : 'Upload'}
-                    </button>
-                  </div>
-                ) : (
-                  <button type="button" onClick={() => fileInputRef.current?.click()} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.875rem', marginTop: '0.4rem', borderRadius: 10, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.6)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}>
-                    <Camera size={13} /> Choose Photo
-                  </button>
-                )}
+                <p style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', marginBottom: '0.25rem' }}>Your avatar uses the first letter of your username.</p>
+                <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)' }}>Profile image uploads are disabled.</p>
               </div>
             </div>
           </div>

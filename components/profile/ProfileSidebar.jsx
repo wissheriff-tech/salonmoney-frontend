@@ -2,30 +2,12 @@
 
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
-import { User, Settings, Lock, KeyRound, LogOut, X, Crown, Camera } from 'lucide-react';
-import { useState, useRef } from 'react';
-import toast from 'react-hot-toast';
-import api from '@/utils/api';
+import { User, Settings, Lock, KeyRound, LogOut, X, Crown } from 'lucide-react';
 
-function ProfileAvatar({ user, size = 'lg', uploading = false }) {
-  const [broken, setBroken] = useState(false);
+function ProfileAvatar({ user, size = 'lg' }) {
   const initial = user?.username?.charAt(0).toUpperCase() || 'U';
-  const photoUrl = user?.profile_photo
-    ? `${(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api').replace('/api', '')}${user.profile_photo}`
-    : null;
-
   const sizeClass = size === 'lg' ? 'w-20 h-20 text-3xl' : 'w-14 h-14 text-xl';
 
-  if (photoUrl && !broken) {
-    return (
-      <img
-        src={photoUrl}
-        alt="Profile"
-        className={`${sizeClass} rounded-full object-cover border-4 border-white/40`}
-        onError={() => setBroken(true)}
-      />
-    );
-  }
   return (
     <div className={`${sizeClass} bg-white/30 rounded-full flex items-center justify-center border-4 border-white/60`}>
       <span className="text-white font-bold drop-shadow">{initial}</span>
@@ -34,38 +16,12 @@ function ProfileAvatar({ user, size = 'lg', uploading = false }) {
 }
 
 export default function ProfileSidebar({ isOpen, onClose }) {
-  const { user, logout, setUser } = useAuthStore();
+  const { user, logout } = useAuthStore();
   const router = useRouter();
-  const fileInputRef = useRef(null);
-  const [uploading, setUploading] = useState(false);
 
   const handleLogout = () => {
     logout();
     router.push('/login');
-  };
-
-  const handleProfilePhotoClick = () => fileInputRef.current?.click();
-
-  const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) { toast.error('Image must be less than 10MB'); return; }
-    if (!file.type.startsWith('image/')) { toast.error('Please select an image file'); return; }
-
-    setUploading(true);
-    try {
-      const formData = new FormData();
-      formData.append('profile_photo', file);
-      const { data } = await api.post('/user/upload-profile-photo', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      setUser({ ...user, profile_photo: data.profile_photo });
-      toast.success('Profile photo updated!');
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to upload photo');
-    } finally {
-      setUploading(false);
-    }
   };
 
   const menuItems = [
@@ -108,28 +64,8 @@ export default function ProfileSidebar({ isOpen, onClose }) {
           {/* Avatar + info */}
           <div className="flex flex-col items-center">
             <div className="relative mb-3">
-              <button
-                onClick={handleProfilePhotoClick}
-                disabled={uploading}
-                className="relative group"
-              >
-                <ProfileAvatar user={user} uploading={uploading} />
-
-                {/* Camera hover overlay */}
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 rounded-full flex items-center justify-center transition-all">
-                  <Camera className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-
-                {/* Online dot */}
-                <div className="absolute bottom-0 right-0 w-5 h-5 bg-green-400 border-2 border-white rounded-full" />
-
-                {uploading && (
-                  <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white" />
-                  </div>
-                )}
-              </button>
-              <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
+              <ProfileAvatar user={user} />
+              <div className="absolute bottom-0 right-0 w-5 h-5 bg-green-400 border-2 border-white rounded-full" />
             </div>
 
             <h3 className="text-white font-bold text-lg">{user?.username || 'User'}</h3>
@@ -158,7 +94,7 @@ export default function ProfileSidebar({ isOpen, onClose }) {
         </div>
 
         {/* Menu items */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-1 bg-white dark:bg-gray-900">
+        <div className="profile-menu-readable flex-1 overflow-y-auto p-4 space-y-1 bg-white dark:bg-gray-900">
           {menuItems.map((item) => {
             const Icon = item.icon;
             return (

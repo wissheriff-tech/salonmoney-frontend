@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import api from '@/utils/api';
+import { API_ROUTES, APP_ROUTES } from '@/utils/navigation';
 import Layout from '@/components/common/Layout';
 
 // ─── VIP tier definitions ──────────────────────────────────────────────────────
@@ -34,14 +35,48 @@ function daysLeft(exp) { return Math.max(0, Math.ceil((new Date(exp) - new Date(
 const DUR_ACCENT = { short: '#f59e0b', week: '#10b981', month: '#60a5fa', promo: '#f472b6' };
 
 // ─── Confirm + Duration modal ──────────────────────────────────────────────────
-function ConfirmModal({ product, balance, durations, onConfirm, onCancel, busy }) {
+function ConfirmModal({ product, balance, durations, invitationAllowed, onConfirm, onCancel, busy }) {
   const tier = tierOf(product.name);
   const { Icon } = tier;
   const canAfford = balance >= product.price_NSL;
 
-  const [selectedKey, setSelectedKey] = useState(durations[0]?.key || 'short');
+  const selectableDurations = durations.filter(d => !d.requires_invitation || invitationAllowed);
+  const [selectedKey, setSelectedKey] = useState(selectableDurations[0]?.key || 'short');
   const selectedDur = durations.find(d => d.key === selectedKey) || durations[0];
   const totalReturn = product.daily_income_NSL * (selectedDur?.days || 3);
+  const defaultDurations = durations.filter(d => d.group !== 'invitation');
+  const invitationDurations = durations.filter(d => d.group === 'invitation');
+
+  const renderDurationButton = (d) => {
+    const accent = DUR_ACCENT[d.key] || '#a78bfa';
+    const isSelected = d.key === selectedKey;
+    const locked = d.requires_invitation && !invitationAllowed;
+    return (
+      <button
+        key={d.key}
+        type="button"
+        disabled={locked}
+        onClick={() => {
+          if (!locked) setSelectedKey(d.key);
+        }}
+        style={{
+          padding: '0.75rem 0.5rem',
+          borderRadius: 12,
+          border: `2px solid ${isSelected ? accent : locked ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.1)'}`,
+          background: isSelected ? `${accent}18` : locked ? 'rgba(255,255,255,0.025)' : 'rgba(255,255,255,0.04)',
+          cursor: locked ? 'not-allowed' : 'pointer',
+          textAlign: 'center',
+          transition: 'all 0.15s',
+          opacity: locked ? 0.55 : 1,
+        }}
+      >
+        <p style={{ fontSize: '0.875rem', fontWeight: 800, color: isSelected ? accent : locked ? 'rgba(255,255,255,0.34)' : 'rgba(255,255,255,0.82)', marginBottom: '0.15rem' }}>{d.label}</p>
+        <p style={{ fontSize: '0.7rem', color: isSelected ? `${accent}cc` : locked ? 'rgba(255,255,255,0.32)' : 'rgba(255,255,255,0.72)' }}>
+          {locked ? 'Invitation only' : `${fmt(product.daily_income_NSL * d.days)} NSL`}
+        </p>
+      </button>
+    );
+  };
 
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
@@ -72,35 +107,21 @@ function ConfirmModal({ product, balance, durations, onConfirm, onCancel, busy }
         {/* Duration selector */}
         <div style={{ marginBottom: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.6rem' }}>
-            <Calendar size={14} color="rgba(255,255,255,0.45)" />
-            <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.45)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Choose Duration</p>
+            <Calendar size={14} color="rgba(255,255,255,0.75)" />
+            <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.86)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Choose Duration</p>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
-            {durations.map(d => {
-              const accent = DUR_ACCENT[d.key] || '#a78bfa';
-              const isSelected = d.key === selectedKey;
-              return (
-                <button
-                  key={d.key}
-                  onClick={() => setSelectedKey(d.key)}
-                  style={{
-                    padding: '0.75rem 0.5rem',
-                    borderRadius: 12,
-                    border: `2px solid ${isSelected ? accent : 'rgba(255,255,255,0.1)'}`,
-                    background: isSelected ? `${accent}18` : 'rgba(255,255,255,0.04)',
-                    cursor: 'pointer',
-                    textAlign: 'center',
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  <p style={{ fontSize: '0.875rem', fontWeight: 800, color: isSelected ? accent : 'rgba(255,255,255,0.6)', marginBottom: '0.15rem' }}>{d.label}</p>
-                  <p style={{ fontSize: '0.7rem', color: isSelected ? `${accent}cc` : 'rgba(255,255,255,0.3)' }}>
-                    {fmt(product.daily_income_NSL * d.days)} NSL
-                  </p>
-                </button>
-              );
-            })}
+          <p style={{ fontSize: '0.68rem', color: '#fff', fontWeight: 800, marginBottom: '0.35rem', textTransform: 'uppercase' }}>Default</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', marginBottom: '0.7rem' }}>
+            {defaultDurations.map(renderDurationButton)}
           </div>
+          {invitationDurations.length > 0 && (
+            <>
+              <p style={{ fontSize: '0.68rem', color: '#fff', fontWeight: 800, marginBottom: '0.35rem', textTransform: 'uppercase' }}>Invitation Only</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
+                {invitationDurations.map(renderDurationButton)}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Details */}
@@ -113,12 +134,12 @@ function ConfirmModal({ product, balance, durations, onConfirm, onCancel, busy }
             ['Net Profit',   `+${fmt(totalReturn - product.price_NSL)} NSL`, totalReturn > product.price_NSL ? '#a78bfa' : '#f87171'],
           ].map(([k, v, c]) => (
             <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.35rem 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)' }}>{k}</span>
+              <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.8)' }}>{k}</span>
               <span style={{ fontSize: '0.875rem', fontWeight: 700, color: c }}>{v}</span>
             </div>
           ))}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
-            <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
               <Wallet size={13} /> Your balance
             </span>
             <span style={{ fontSize: '0.875rem', fontWeight: 700, color: canAfford ? '#fff' : '#f87171' }}>
@@ -134,12 +155,12 @@ function ConfirmModal({ product, balance, durations, onConfirm, onCancel, busy }
         )}
 
         <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button onClick={onCancel} style={{ flex: 1, padding: '0.8rem', borderRadius: 10, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.6)', fontWeight: 700, cursor: 'pointer', fontSize: '0.875rem' }}>
+          <button onClick={onCancel} style={{ flex: 1, padding: '0.8rem', borderRadius: 10, background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: '#fff', fontWeight: 700, cursor: 'pointer', fontSize: '0.875rem' }}>
             Cancel
           </button>
           <button
             onClick={() => onConfirm(selectedKey)}
-            disabled={!canAfford || busy}
+            disabled={!canAfford || busy || !selectedDur}
             style={{
               flex: 1, padding: '0.8rem', borderRadius: 10, fontWeight: 800, fontSize: '0.875rem',
               cursor: canAfford && !busy ? 'pointer' : 'not-allowed',
@@ -281,16 +302,16 @@ export default function Products() {
 
   useEffect(() => {
     if (isInitializing) return;
-    if (!user) { router.push('/login'); return; }
+    if (!user) { router.push(APP_ROUTES.login); return; }
     load();
   }, [user?.id, isInitializing]);
 
   const load = async () => {
     try {
       const [{ data: prods }, { data: dash }, { data: durs }] = await Promise.all([
-        api.get('/products'),
-        api.get('/user/dashboard'),
-        api.get('/products/durations'),
+        api.get(API_ROUTES.products.list),
+        api.get(API_ROUTES.user.dashboard),
+        api.get(API_ROUTES.products.durations),
       ]);
       setProducts(prods);
       setDurations(durs.options || []);
@@ -310,14 +331,14 @@ export default function Products() {
     if (!confirm) return;
     setBusy(confirm.id);
     try {
-      const { data } = await api.post('/products/buy', {
+      const { data } = await api.post(API_ROUTES.products.buy, {
         product_id: confirm.id,
         duration_key: durationKey,
       });
       toast.success(data.message);
       setConfirm(null);
       await load();
-      router.push('/dashboard');
+      router.push(APP_ROUTES.dashboard);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Purchase failed');
     } finally {
@@ -341,6 +362,7 @@ export default function Products() {
 
   const balance = parseFloat(user?.balance_NSL ?? 0);
   const userVip = vipNum(user?.vip_level);
+  const invitationAllowed = Boolean(user?.referred_by) || ['admin', 'superadmin'].includes(user?.role);
 
   return (
     <Layout>
@@ -349,6 +371,7 @@ export default function Products() {
           product={confirm}
           balance={balance}
           durations={durations}
+          invitationAllowed={invitationAllowed}
           onConfirm={handleBuy}
           onCancel={() => setConfirm(null)}
           busy={busy === confirm.id}
@@ -373,7 +396,7 @@ export default function Products() {
               VIP Investment Plans
             </h1>
             <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.45)', marginBottom: '1rem' }}>
-              Choose your plan and pick 3 days, 1 week, 1 month or a promo duration
+              Default durations are 3 days and 1 week. 1 month and promo durations are invitation-only.
             </p>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 20, padding: '0.4rem 1rem' }}>
               <Wallet size={14} color="#a78bfa" />
@@ -394,7 +417,7 @@ export default function Products() {
             <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
               {durations.map(d => (
                 <span key={d.key} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: `${DUR_ACCENT[d.key] || '#a78bfa'}18`, border: `1px solid ${DUR_ACCENT[d.key] || '#a78bfa'}44`, borderRadius: 20, padding: '0.25rem 0.75rem', fontSize: '0.75rem', fontWeight: 700, color: DUR_ACCENT[d.key] || '#a78bfa' }}>
-                  <Calendar size={11} /> {d.label}
+                  <Calendar size={11} /> {d.label}{d.requires_invitation ? ' · Invitation' : ' · Default'}
                 </span>
               ))}
             </div>

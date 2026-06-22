@@ -3,6 +3,10 @@
  * Main configuration file for the frontend application
  */
 
+const DEFAULT_API_URL = process.env.NODE_ENV === 'production'
+  ? 'https://salonmoneynewbackend.vercel.app/api'
+  : 'http://localhost:5000/api';
+
 export const config = {
   // Application Info
   app: {
@@ -15,7 +19,7 @@ export const config = {
 
   // API Configuration
   api: {
-    baseUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api',
+    baseUrl: process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL,
     timeout: 30000,
     retryAttempts: 3,
     retryDelay: 1000
@@ -72,8 +76,8 @@ export const config = {
   // Business Rules
   business: {
     currency: {
-      nslToUsdtRate: 23,
-      usdtToNslRate: 23,
+      nslToUsdtRate: 23.99,
+      usdtToNslRate: 23.99,
       nslDecimals: 2,
       usdtDecimals: 2
     },

@@ -7,6 +7,7 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/auth';
 import api from '@/utils/api';
+import { resolvePostLoginRedirect } from '@/utils/navigation';
 import { Lock, ArrowLeft } from 'lucide-react';
 
 const BG = 'linear-gradient(145deg, oklch(0.18 0.26 295) 0%, oklch(0.10 0.20 270) 45%, oklch(0.14 0.22 245) 100%)';
@@ -16,6 +17,14 @@ function Verify2FAContent() {
   const searchParams = useSearchParams();
   const userId = searchParams.get('userId');
   const { setUser } = useAuthStore();
+  const [rememberMe] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      return window.sessionStorage.getItem('pendingLoginRememberMe') === '1';
+    } catch {
+      return false;
+    }
+  });
 
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
@@ -72,10 +81,17 @@ function Verify2FAContent() {
     }
     setIsLoading(true);
     try {
-      const { data } = await api.post('/auth/verify-2fa', { userId, code: fullCode });
+      const { data } = await api.post('/auth/verify-2fa', { userId, code: fullCode, rememberMe });
+
+      // C-5 FIX: Token is already set as an httpOnly cookie by the server.
+      // Do not store tokens in localStorage — XSS accessible storage is insecure.
       setUser(data.user);
+      try {
+        window.sessionStorage.removeItem('pendingLoginRememberMe');
+      } catch {}
+
       toast.success('Login successful!');
-      router.push(data.redirectTo || '/dashboard');
+      router.push(resolvePostLoginRedirect(data));
     } catch (error) {
       toast.error(error.response?.data?.message || '2FA verification failed');
       setCode(['', '', '', '', '', '']);
@@ -158,7 +174,7 @@ function Verify2FAContent() {
 
           <div style={{ marginTop: '1.25rem', textAlign: 'center' }}>
             <p style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.4)' }}>
-              Didn't receive the code?{' '}
+              Didn&apos;t receive the code?{' '}
               <button
                 onClick={handleResend}
                 disabled={isResending}

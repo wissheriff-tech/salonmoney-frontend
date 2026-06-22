@@ -51,7 +51,7 @@ export default function ForgotPassword() {
             </div>
             <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff', marginBottom: '0.5rem' }}>Check Your Email</h1>
             <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.5)', lineHeight: 1.6, marginBottom: '1.5rem' }}>
-              If an account with that email exists, we've sent password reset instructions.
+              If an account with that email exists, we&apos;ve sent password reset instructions.
             </p>
             <Link href="/login" style={{ display: 'block', padding: '0.875rem', borderRadius: 12, background: 'rgba(167,139,250,0.15)', border: '1px solid rgba(167,139,250,0.35)', color: '#a78bfa', fontWeight: 700, fontSize: '0.875rem', textDecoration: 'none', textAlign: 'center' }}>
               Back to Login
@@ -62,7 +62,7 @@ export default function ForgotPassword() {
             <div style={{ marginBottom: '1.75rem' }}>
               <h1 style={{ fontSize: '2rem', fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', marginBottom: '0.4rem' }}>Forgot Password</h1>
               <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.45)', lineHeight: 1.6 }}>
-                Enter your email and we'll send a reset link.
+                Enter your email and we&apos;ll send a reset link.
               </p>
             </div>
 

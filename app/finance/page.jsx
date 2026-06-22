@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/auth';
 import Layout from '@/components/common/Layout';
 import { Users, DollarSign, CheckCircle, XCircle, Wallet, UserCheck, UserX, Activity, Clock, X } from 'lucide-react';
 import toast from 'react-hot-toast';
-import api from '@/utils/api';
+import api, { backendAssetUrl } from '@/utils/api';
 
 const BG = 'linear-gradient(145deg, oklch(0.18 0.26 295) 0%, oklch(0.10 0.20 270) 45%, oklch(0.14 0.22 245) 100%)';
 const inputStyle = { width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 10, padding: '0.7rem 0.875rem', color: '#fff', fontSize: '0.875rem', outline: 'none', boxSizing: 'border-box' };
@@ -17,6 +17,16 @@ const TABS = [
   { id: 'users',        label: 'User Management',      Icon: Users },
   { id: 'activity',    label: 'Activity Log',          Icon: Activity, superadmin: true },
 ];
+
+function parseTransactionNotes(notes) {
+  if (!notes || typeof notes !== 'string') return { data: {}, isJson: false };
+  try {
+    const parsed = JSON.parse(notes);
+    return { data: parsed && typeof parsed === 'object' ? parsed : {}, isJson: true };
+  } catch {
+    return { data: {}, isJson: false };
+  }
+}
 
 export default function FinancePage() {
   const { user } = useAuthStore();
@@ -30,6 +40,11 @@ export default function FinancePage() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [currencyForm, setCurrencyForm] = useState({ amount_NSL: '', amount_usdt: '', reason: '' });
   const [nslRate,      setNslRate]      = useState(23.99);
+
+  useEffect(() => {
+    const requestedTab = new URLSearchParams(window.location.search).get('tab');
+    if (TABS.some(tab => tab.id === requestedTab)) setActiveTab(requestedTab);
+  }, []);
 
   useEffect(() => {
     if (!user || (user.role !== 'superadmin' && user.role !== 'finance')) {
@@ -225,6 +240,9 @@ export default function FinancePage() {
                 </div>
               ) : transactions.map((tx) => {
                 const tc = TYPE_COLOR(tx.type);
+                const parsedNotes = parseTransactionNotes(tx.notes);
+                const receiptNotes = parsedNotes.data;
+                const proofUrl = tx.payment_proof ? backendAssetUrl(tx.payment_proof) : '';
                 return (
                   <div key={tx.id} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
@@ -244,7 +262,17 @@ export default function FinancePage() {
                         </p>
                       ))}
                       <p style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.25)' }}>{new Date(tx.created_at).toLocaleString()}</p>
-                      {tx.notes && <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)', fontStyle: 'italic' }}>Note: {tx.notes}</p>}
+                      {tx.type === 'recharge' && (tx.reference_id || proofUrl || receiptNotes.sender_number || receiptNotes.receiver_number) && (
+                        <div style={{ marginTop: '0.35rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '0.65rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                          <p style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.42)', fontWeight: 800 }}>Receipt proof</p>
+                          {tx.reference_id && <p style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.55)' }}>Reference: <span style={{ color: '#fff', fontFamily: 'monospace', fontWeight: 800 }}>{tx.reference_id}</span></p>}
+                          {tx.deposit_network && <p style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.55)' }}>Network: <span style={{ color: '#fff', fontWeight: 800 }}>{tx.deposit_network}</span></p>}
+                          {(receiptNotes.sender_number || receiptNotes.receiver_number) && <p style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.55)' }}>Number: <span style={{ color: '#fff', fontFamily: 'monospace', fontWeight: 800 }}>{receiptNotes.sender_number || receiptNotes.receiver_number}</span></p>}
+                          {receiptNotes.timestamp_receipt && <p style={{ fontSize: '0.74rem', color: 'rgba(255,255,255,0.55)' }}>Receipt time: <span style={{ color: '#fff', fontFamily: 'monospace', fontWeight: 800 }}>{receiptNotes.timestamp_receipt}</span></p>}
+                          {proofUrl && <a href={proofUrl} target="_blank" rel="noreferrer" style={{ width: 'fit-content', marginTop: '0.2rem', fontSize: '0.74rem', color: '#a78bfa', fontWeight: 800 }}>Open receipt image</a>}
+                        </div>
+                      )}
+                      {tx.notes && !parsedNotes.isJson && <p style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)', fontStyle: 'italic' }}>Note: {tx.notes}</p>}
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <button onClick={() => handleApprove(tx.id)} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.6rem 1rem', borderRadius: 10, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: '#10b981', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}>

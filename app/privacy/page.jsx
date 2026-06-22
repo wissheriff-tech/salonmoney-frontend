@@ -126,9 +126,9 @@ export default function PrivacyPolicy() {
           </Section>
 
           {[
-            ['Data Retention',    <Database size={20} color="#f59e0b" />, 'We retain your personal information for as long as necessary to provide our services. When you close your account, data is deleted or anonymized within 90 days, except where required for legal or security purposes.'],
+            ['Data Retention',    <Database key="data-retention-icon" size={20} color="#f59e0b" />, 'We retain your personal information for as long as necessary to provide our services. When you close your account, data is deleted or anonymized within 90 days, except where required for legal or security purposes.'],
             ["Children's Privacy", null, 'Our platform is not intended for individuals under 18. We do not knowingly collect information from children. If we become aware of such data, we delete it immediately.'],
-            ['Changes to This Policy', <Bell size={20} color="#60a5fa" />, 'We may update this Privacy Policy from time to time. We will notify you of significant changes by posting the new policy and updating the "Last Updated" date. We encourage you to review periodically.'],
+            ['Changes to This Policy', <Bell key="policy-changes-icon" size={20} color="#60a5fa" />, 'We may update this Privacy Policy from time to time. We will notify you of significant changes by posting the new policy and updating the "Last Updated" date. We encourage you to review periodically.'],
           ].map(([title, icon, text]) => (
             <Section key={title} icon={icon} title={title}>
               <p style={BODY}>{text}</p>
@@ -143,7 +143,7 @@ export default function PrivacyPolicy() {
               <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.55)', marginBottom: '0.3rem' }}>
                 Email: <a href="mailto:privacy@salonmoney.com" style={{ color: '#a78bfa', textDecoration: 'none' }}>privacy@salonmoney.com</a>
               </p>
-              <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.55)', marginBottom: '0.3rem' }}>Phone: +232 (0) 123 456 789</p>
+              <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.55)', marginBottom: '0.3rem' }}>Phone: +232 (0)34115306</p>
               <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.55)' }}>
                 Live Chat: <a href="/help" style={{ color: '#a78bfa', textDecoration: 'none' }}>Help Center</a>
               </p>

@@ -16,7 +16,7 @@ export default function Layout({ children }) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="app-shell min-h-screen flex flex-col bg-gray-50 dark:bg-gray-950 transition-colors">
       {/* Navbar */}
       <Navbar onProfileClick={toggleProfile} isProfileOpen={isProfileOpen} />
 
@@ -24,7 +24,7 @@ export default function Layout({ children }) {
       <ProfileSidebar isOpen={isProfileOpen} onClose={closeProfile} />
 
       {/* Main Content — extra bottom padding on mobile for the fixed bottom nav */}
-      <main className="flex-1 pb-20 md:pb-0">
+      <main className="app-main flex-1 pb-20 md:pb-0">
         {children}
       </main>
 

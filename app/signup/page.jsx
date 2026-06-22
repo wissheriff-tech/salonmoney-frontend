@@ -136,7 +136,8 @@ function SignupInner() {
       justifyContent: 'center',
       padding: '1.5rem 1rem 5rem',
       position: 'relative',
-      overflow: 'hidden',
+      overflowX: 'hidden',
+      overflowY: 'auto',
     }}>
 
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>

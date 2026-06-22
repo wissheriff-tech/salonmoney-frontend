@@ -97,7 +97,7 @@ export default function SecurityPage() {
           {step === STEPS.ENABLE_EMAIL && (
             <>
               <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#fff', marginBottom: '0.5rem' }}>Enable 2FA</h2>
-              <p style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)', marginBottom: '1.25rem' }}>We'll send a 6-digit code to confirm your email.</p>
+              <p style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.45)', marginBottom: '1.25rem' }}>We&apos;ll send a 6-digit code to confirm your email.</p>
               <form onSubmit={sendEnableCode}>
                 <label style={labelStyle}>Email address</label>
                 <input type="email" value={enableEmail} onChange={e => setEnableEmail(e.target.value)} style={{ ...inputStyle, marginBottom: '1rem' }} required />
@@ -123,7 +123,7 @@ export default function SecurityPage() {
                   {isLoading ? 'Verifying…' : 'Activate 2FA'}
                 </button>
                 <button type="button" onClick={() => setStep(STEPS.ENABLE_EMAIL)} style={{ width: '100%', padding: '0.6rem', background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)', fontSize: '0.78rem', cursor: 'pointer' }}>
-                  Didn't receive it? Go back
+                  Didn&apos;t receive it? Go back
                 </button>
               </form>
             </>
@@ -152,7 +152,7 @@ export default function SecurityPage() {
         </Modal>
       )}
 
-      <div style={{ minHeight: '100vh', background: BG, padding: '2rem 1rem 3rem', position: 'relative' }}>
+      <div className="account-readable-surface" style={{ minHeight: '100vh', background: BG, padding: '2rem 1rem 3rem', position: 'relative' }}>
         <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
           <div style={{ position: 'absolute', width: 400, height: 400, borderRadius: '50%', background: 'oklch(0.62 0.19 295 / .09)', filter: 'blur(100px)', top: -100, right: -80 }} />
           <div style={{ position: 'absolute', width: 350, height: 350, borderRadius: '50%', background: 'oklch(0.55 0.18 240 / .07)', filter: 'blur(90px)', bottom: -80, left: -60 }} />

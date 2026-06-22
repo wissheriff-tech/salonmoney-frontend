@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import api from '../../utils/api';
 
 const SLL_PER_NSL = parseFloat(process.env.NEXT_PUBLIC_ORANGE_SLL_PER_NSL || 100);
+const DEFAULT_NSL_RATE = 23.99;
 
 function statusBadge(s) {
   const map = {
@@ -18,7 +19,7 @@ function statusBadge(s) {
 }
 
 // ── Crypto deposit tab ────────────────────────────────────────────────────────
-function CryptoTab({ binanceAddress, binanceNetwork }) {
+function CryptoTab({ binanceAddress, binanceNetwork, nslRate }) {
   const [form, setForm] = useState({ amount: '', txid: '', notes: '' });
   const [file, setFile] = useState(null);
   const [status, setStatus] = useState({ loading: false, success: '', error: '' });
@@ -50,6 +51,9 @@ function CryptoTab({ binanceAddress, binanceNetwork }) {
       setStatus({ loading: false, success: '', error: err.response?.data?.message || 'Submission failed.' });
     }
   };
+
+  const usdtAmount = parseFloat(form.amount) || 0;
+  const expectedNsl = usdtAmount * nslRate;
 
   return (
     <div className="space-y-6">
@@ -83,6 +87,11 @@ function CryptoTab({ binanceAddress, binanceNetwork }) {
               onChange={e => setForm({ ...form, amount: e.target.value })}
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-purple-500"
               placeholder="e.g. 50" />
+            {usdtAmount > 0 && (
+              <p className="text-xs text-white mt-2">
+                Approx. {expectedNsl.toLocaleString(undefined, { maximumFractionDigits: 2 })} NSL at 1 USDT = {nslRate.toFixed(2)} NSL
+              </p>
+            )}
           </div>
           <div>
             <label className="text-gray-400 text-sm block mb-1">Transaction ID / TxHash (optional)</label>
@@ -141,9 +150,9 @@ function parseOrangeReceipt(text) {
 
   const senderMatch = text.match(/(?:Sender|From)\s*[:\-]?\s*(0\d{7,9})/i);
   const recvMatch   = text.match(/(?:Receiver|To)\s*[:\-]?\s*(0\d{7,9})/i);
-  // Match amounts: "SLE 5.00", "5.00 Leones", "amount of 5.00 leones", or plain number before Leones
-  const amtMatch    = text.match(/(?:amount\s+of\s+|SLE\s*|Le\s*)([\d,]+(?:\.\d+)?)\s*(?:leones?)?/i)
-                   || text.match(/SLE?\s*([\d,]+)/i);
+  // Match receipt amounts: "NSL 5.00", "SLE 5.00", "5.00 Leones", or plain number before Leones
+  const amtMatch    = text.match(/(?:amount\s+of\s+|NSL\s*|SLE\s*|Le\s*)([\d,]+(?:\.\d+)?)\s*(?:leones?)?/i)
+                   || text.match(/(?:NSL|SLE?)\s*([\d,]+)/i);
   const tsMatch     = text.match(/(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})/);
 
   const refId = refMatch1 ? 'Reference' + refMatch1[1]
@@ -160,7 +169,7 @@ function parseOrangeReceipt(text) {
   };
 }
 
-function MobileMoneyTab({ provider, accentClass, bgClass, borderClass, merchantNumber }) {
+function MobileMoneyTab({ provider, accentClass, bgClass, borderClass, merchantNumber, nslRate }) {
   const [step, setStep]             = useState(1);
   const [amountNSL, setAmountNSL]   = useState('');
   const [screenshot, setScreenshot] = useState(null);
@@ -171,6 +180,7 @@ function MobileMoneyTab({ provider, accentClass, bgClass, borderClass, merchantN
   const fileRef = useRef();
   const nsl = parseFloat(amountNSL) || 0;
   const sll = Math.round(nsl * SLL_PER_NSL);
+  const usdtValue = nsl / nslRate;
 
   const handleFile = async (file) => {
     if (!file) return;
@@ -255,8 +265,10 @@ function MobileMoneyTab({ provider, accentClass, bgClass, borderClass, merchantN
           {nsl >= 10 && (
             <>
               <div className={`${bgClass} bg-opacity-10 border ${borderClass} rounded-xl p-4 text-sm space-y-1.5`}>
-                <div className="flex justify-between text-gray-300"><span>Send (SLE)</span><span className={`font-mono ${accentClass} font-bold`}>{sll.toLocaleString()} SLE</span></div>
+                <div className="flex justify-between text-gray-300"><span>Send (NSL)</span><span className={`font-mono ${accentClass} font-bold`}>{sll.toLocaleString()} NSL</span></div>
                 <div className="flex justify-between text-gray-300"><span>You receive (NSL)</span><span className="font-mono text-white font-semibold">{nsl.toLocaleString()} NSL</span></div>
+                <div className="flex justify-between text-gray-300"><span>USD value</span><span className="font-mono text-white font-semibold">${usdtValue.toFixed(2)} USDT</span></div>
+                <div className="flex justify-between text-gray-300"><span>Rate</span><span className="font-mono text-white font-semibold">1 USDT = {nslRate.toFixed(2)} NSL</span></div>
               </div>
               <div className="bg-gray-800 rounded-xl p-4 space-y-2">
                 <p className="text-gray-400 text-xs uppercase tracking-wide">Send to this {provider} number</p>
@@ -268,7 +280,7 @@ function MobileMoneyTab({ provider, accentClass, bgClass, borderClass, merchantN
               </div>
               <button onClick={() => setStep(2)}
                 className={`w-full ${bgClass} hover:opacity-90 text-white py-3 rounded-xl font-semibold transition-colors`}>
-                I've sent the money →
+                I&apos;ve sent the money →
               </button>
             </>
           )}
@@ -278,7 +290,7 @@ function MobileMoneyTab({ provider, accentClass, bgClass, borderClass, merchantN
       {step === 2 && (
         <div className="space-y-4">
           <div className="bg-gray-800 rounded-xl p-4 text-sm text-gray-300 space-y-1">
-            <p>Sent <span className={`${accentClass} font-bold`}>{sll.toLocaleString()} SLE</span> to <span className="font-mono text-white">{merchantNumber}</span>?</p>
+            <p>Sent <span className={`${accentClass} font-bold`}>{sll.toLocaleString()} NSL</span> to <span className="font-mono text-white">{merchantNumber}</span>?</p>
             <p className="text-gray-500 text-xs">Take a screenshot of the confirmation and upload it below.</p>
           </div>
           <div onClick={() => fileRef.current?.click()}
@@ -317,7 +329,7 @@ function MobileMoneyTab({ provider, accentClass, bgClass, borderClass, merchantN
             { label: 'Reference ID', key: 'reference_id', placeholder: 'e.g. ReferenceCI260606.1351.B51366', required: true },
             { label: 'Sender Number', key: 'sender_number', placeholder: 'e.g. 075085941' },
             { label: 'Receiver Number', key: 'receiver_number', placeholder: 'e.g. 078811767' },
-            { label: 'Amount (SLE)', key: 'amount_SLE', placeholder: 'e.g. 2500' },
+            { label: 'Amount (NSL)', key: 'amount_SLE', placeholder: 'e.g. 2500' },
             { label: 'Timestamp on Receipt', key: 'timestamp_receipt', placeholder: 'e.g. 2026-06-06 13:51' },
           ].map(({ label, key, placeholder, required }) => (
             <div key={key}>
@@ -348,11 +360,15 @@ function DepositPageInner() {
   const searchParams = useSearchParams();
   const [tab, setTab] = useState('crypto');
   const [paymentMethods, setPaymentMethods] = useState(null);
+  const [nslRate, setNslRate] = useState(DEFAULT_NSL_RATE);
 
   useEffect(() => {
     api.get('/deposit/payment-methods')
       .then(r => setPaymentMethods(r.data.data))
       .catch(() => setPaymentMethods({}));
+    api.get('/finance/nsl-rate')
+      .then(r => setNslRate(parseFloat(r.data.nsl_per_usdt) || DEFAULT_NSL_RATE))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -398,6 +414,7 @@ function DepositPageInner() {
         <CryptoTab
           binanceAddress={paymentMethods?.binance_wallet_address}
           binanceNetwork={paymentMethods?.binance_network}
+          nslRate={nslRate}
         />
       )}
       {tab === 'orange' && (
@@ -407,6 +424,7 @@ function DepositPageInner() {
           bgClass="bg-orange-500"
           borderClass="border-orange-500"
           merchantNumber={paymentMethods?.orange_money_number}
+          nslRate={nslRate}
         />
       )}
       {tab === 'africell' && (
@@ -416,6 +434,7 @@ function DepositPageInner() {
           bgClass="bg-blue-600"
           borderClass="border-blue-500"
           merchantNumber={paymentMethods?.africell_number}
+          nslRate={nslRate}
         />
       )}
     </div>
