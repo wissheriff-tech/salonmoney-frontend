@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import { useAuthStore } from '@/store/auth';
 import api, { backendAssetUrl } from '@/utils/api';
 import { API_ROUTES, APP_ROUTES } from '@/utils/navigation';
-import { Users, DollarSign, Trash2, Edit, Plus, Shield, X, Key, Search, CheckCircle, XCircle, Package, FileCheck, MessageSquare } from 'lucide-react';
+import { Users, DollarSign, Trash2, Edit, Plus, Shield, ShieldCheck, X, Key, Search, CheckCircle, XCircle, Package, FileCheck, MessageSquare } from 'lucide-react';
 
 const esc = (str) => String(str ?? '').replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])
@@ -330,6 +330,19 @@ export default function AdminPanel() {
     try {
       await api.patch(`/admin/kyc/${selectedKYCUser.id}/reject`, { reason: kycRejectReason });
       toast.success('KYC rejected'); setShowKYCModal(false); setKycRejectReason(''); fetchAll();
+    } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
+  };
+
+  const toggleKYC = async (u) => {
+    try {
+      if (u.kyc_verified) {
+        await api.patch(`/admin/kyc/${u.id}/reject`, { reason: 'Revoked by admin' });
+        toast.success(`KYC revoked for ${u.username}`);
+      } else {
+        await api.patch(`/admin/kyc/${u.id}/approve`, {});
+        toast.success(`KYC approved for ${u.username}`);
+      }
+      fetchAll();
     } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
   };
 
@@ -684,6 +697,7 @@ export default function AdminPanel() {
                                     <button onClick={() => { setSelectedUser(u); setPhoneForm({ phone: u.phone || '' }); setShowPhoneModal(true); }} title="Change phone" className="p-1.5 text-blue-600 hover:bg-blue-50 rounded"><span className="text-xs font-bold">#</span></button>
                                     <button onClick={() => { setSelectedUser(u); setMessageForm({ title: '', message: '', priority: 'high' }); setShowMessageModal(true); }} title="Send message" className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded"><MessageSquare className="w-3.5 h-3.5" /></button>
                                     {u.status === 'pending' && <button onClick={() => approveUser(u.id)} title="Approve" className="p-1.5 text-green-600 hover:bg-green-50 rounded"><CheckCircle className="w-3.5 h-3.5" /></button>}
+                                    <button onClick={() => toggleKYC(u)} title={u.kyc_verified ? 'KYC Verified — click to revoke' : 'KYC not verified — click to approve'} className={`p-1.5 rounded ${u.kyc_verified ? 'text-teal-600 hover:bg-teal-50' : 'text-gray-400 hover:bg-gray-100'}`}>{u.kyc_verified ? <ShieldCheck className="w-3.5 h-3.5" /> : <Shield className="w-3.5 h-3.5" />}</button>
                                     <button onClick={() => handleUpdateStatus(u.id, u.status === 'active' ? 'frozen' : 'active')} title={u.status === 'active' ? 'Freeze' : 'Activate'} className={`p-1.5 rounded ${u.status === 'active' ? 'text-orange-600 hover:bg-orange-50' : 'text-green-600 hover:bg-green-50'}`}><Shield className="w-3.5 h-3.5" /></button>
                                     <button onClick={() => handleDeleteUser(u.id, u.username)} title="Delete" className="p-1.5 text-red-600 hover:bg-red-50 rounded"><Trash2 className="w-3.5 h-3.5" /></button>
                                   </div>

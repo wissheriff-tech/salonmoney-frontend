@@ -316,23 +316,10 @@ export default function DepositPage() {
                 )}
               </div>
 
-              {/* OCR debug panel */}
+              {/* Receipt processing indicator */}
               {ocrDebug && (
-                <div style={{ marginBottom: '1rem', background: 'rgba(0,0,0,0.35)', border: `1px solid ${ocrDebug.ok ? 'rgba(16,185,129,0.4)' : 'rgba(248,113,113,0.4)'}`, borderRadius: 10, padding: '0.875rem', fontSize: '0.72rem', fontFamily: 'monospace' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <span style={{ color: ocrDebug.ok ? '#10b981' : '#f87171', fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                      OCR — {ocrDebug.ok ? 'Data extracted' : 'Nothing extracted'}
-                    </span>
-                    <button type="button" onClick={() => setOcrDebug(null)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', fontSize: '0.7rem' }}>✕</button>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.2rem 0.75rem', marginBottom: '0.75rem' }}>
-                    <span style={{ color: 'rgba(255,255,255,0.35)' }}>Amount:</span><span style={{ color: ocrDebug.amount ? '#10b981' : '#f87171' }}>{ocrDebug.amount || '—'}</span>
-                    <span style={{ color: 'rgba(255,255,255,0.35)' }}>Phone:</span><span style={{ color: ocrDebug.phone ? '#10b981' : '#f87171' }}>{ocrDebug.phone || '—'}</span>
-                    <span style={{ color: 'rgba(255,255,255,0.35)' }}>Ref ID:</span><span style={{ color: ocrDebug.ref ? '#10b981' : '#f87171' }}>{ocrDebug.ref || '—'}</span>
-                    {ocrDebug.error && <><span style={{ color: 'rgba(255,255,255,0.35)' }}>Error:</span><span style={{ color: '#f87171' }}>{ocrDebug.error}</span></>}
-                  </div>
-                  <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.3rem' }}>Raw OCR text:</div>
-                  <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'rgba(255,255,255,0.5)', fontSize: '0.65rem', maxHeight: 160, overflowY: 'auto', lineHeight: 1.5 }}>{ocrDebug.raw || '(empty)'}</pre>
+                <div style={{ marginBottom: '1rem', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.25)', borderRadius: 10, padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ color: '#10b981', fontSize: '0.75rem', fontWeight: 600 }}>Processing</span>
                 </div>
               )}
 
