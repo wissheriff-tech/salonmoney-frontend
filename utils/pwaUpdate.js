@@ -1,4 +1,4 @@
-export const APP_VERSION = '2026-07-02-2';
+export const APP_VERSION = '2026-07-02-3';
 export const PROGRESS_EVENT = 'goldmine:pwa-update-progress';
 
 const SW_PATH = '/sw.js';
